@@ -14,7 +14,8 @@ select <- function(i,output,est.cdf,dataset){
   return(output)
 }
 
-make.selection <- function(dataset,method='no change',ssc=0.75){
+make.selection <- function(dataset,method='no change',look.n=0.37,
+                           ssc=0.75){
   # purpose : uses the 37% rule to attempt to select the best candidate from 
   #           a simulated population of 'applicants'.
   #
@@ -22,6 +23,7 @@ make.selection <- function(dataset,method='no change',ssc=0.75){
   #           method - name of a method to use which modifies the most simple
   #                    outline of the algorithm. 
   #                    options are - second.saviour.
+  #           look.n - the percentage of the data set we use as our looking set
   #           ssc    - parameter value which sets certain parameters for the 
   #                    method selected
   #
@@ -39,6 +41,8 @@ make.selection <- function(dataset,method='no change',ssc=0.75){
   dataset <- na.omit(dataset)
   if (class(dataset)!='numeric') stop('input dataset must be numeric')
   
+  if (look.n<=0 | look.n>=1) stop('look.n must be between 0 and 1')
+  
   output <- vector(length=4)
   names(output) <- c('pop.max','number','selection','score')
   
@@ -46,11 +50,15 @@ make.selection <- function(dataset,method='no change',ssc=0.75){
   est.cdf <- ecdf(dataset)       # get the ecdf from the data
   
   n <- length(dataset)
-  stop.looking <- round(n*0.37)
+  
+  ifelse(look.n<0.5,
+         stop.looking <- ceiling(n*look.n),   # to avoid having a null looking
+         stop.looking <- floor(n*look.n))     # set or a full one
+  
   lookset <- dataset[1:stop.looking]
   
   observed.best <- max(lookset)
-  second.best <- max(lookset[-which(lookset==observed.best)])
+  second.best <- max(lookset[which(lookset!=observed.best)])
   
   for (i in stop.looking:n){
     
@@ -100,11 +108,21 @@ draw.ss.method.graph <- function(points,replicate,pop.size){
        xlab='ssc')
 }
 
-A = system.time(
-  draw.ss.method.graph(points = 10, replicate = 10000, pop.size = 1000)
-)
-# 
-simplest.method <- rowMeans(replicate(100000,make.selection(rnorm(500))))[4]
-# ss.method <- rowMeans(replicate(1000,make.selection(rnorm(100),
-#                                                     method='second.saviour',
-#                                                     ssc   =0.75)))[4]
+draw.look.n.graph <- function(N=50, S=2000, pop.size=500, lower=0.01,
+                              upper=0.99){
+  # inputs :
+  #          N        - The number of different look.n values to try
+  #          S        - The number of simulations to run for each look.n
+  #          pop.size - The size of the population we sample from
+  x <-  seq(lower,upper,length=N)
+  y <-  vector(length=N)
+  
+  for (i in 1:N){
+    y[i] <- mean(replicate(S, make.selection(rnorm(pop.size),look.n=x[i])[4]))
+  }
+  
+  plot(x,y,type='l',main='Graph of method score given look.n',ylab='score',
+       xlab='look.n')
+  
+  return(x[which(y==max(y))])
+}
