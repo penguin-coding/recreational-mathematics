@@ -56,7 +56,7 @@ sieve20000 <-  sieve.with.marker(20000)
 
 x <- seq(2,1500)
 y <- sapply(x, cross.count)
-plot(x,y)
+plot(x,y,pch='.')
 x[y==max(y)]
 
 n <- 500000
